@@ -1,58 +1,35 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <title>FPS 3D</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-html,body{
-    margin:0;
-    padding:0;
-    overflow:hidden;
-    background:black;
-    width:100%;
-    height:100%;
-}
-canvas{display:block;}
-
-#ui{
-    position:absolute;
-    top:10px;
-    left:10px;
-    color:white;
-    font-family:arial;
-    font-size:14px;
-    z-index:10;
-    opacity:0.8;
-}
-
+body { margin:0; overflow:hidden; background:black; }
 #crosshair{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:22px;
-    height:22px;
-    transform:translate(-50%,-50%);
-    opacity:0.85;
-    pointer-events:none;
-    image-rendering: crisp-edges;
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:40px;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+#info{
+  position:absolute;
+  top:10px;
+  left:10px;
+  color:white;
+  font-family:Arial;
 }
 </style>
 </head>
-
 <body>
 
-<div id="ui">
-Click to play<br>
-WASD = move<br>
-Space = jump<br>
-Mouse = shoot
-</div>
-
+<div id="info">WASD hareket | Mouse bak | Click ateş</div>
 <img id="crosshair" src="crosshair.png">
 
-<script type="module" src="game3d.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script src="game3d.js"></script>
 
 </body>
 </html>
+
