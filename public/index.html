@@ -1,26 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>FPS</title>
+<meta charset="utf-8">
+<title>FPS 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body { margin:0; overflow:hidden; background:black; }
-#crosshair {
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:24px;
-  transform:translate(-50%,-50%);
+html,body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:black;
+    width:100%;
+    height:100%;
+}
+canvas{display:block;}
+
+#ui{
+    position:absolute;
+    top:10px;
+    left:10px;
+    color:white;
+    font-family:arial;
+    font-size:14px;
+    z-index:10;
+    opacity:0.8;
+}
+
+#crosshair{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:22px;
+    height:22px;
+    transform:translate(-50%,-50%);
+    opacity:0.85;
+    pointer-events:none;
+    image-rendering: crisp-edges;
 }
 </style>
 </head>
+
 <body>
 
-<img src="crosshair.png" id="crosshair">
+<div id="ui">
+Click to play<br>
+WASD = move<br>
+Space = jump<br>
+Mouse = shoot
+</div>
 
-<script src="/socket.io/socket.io.js"></script>
+<img id="crosshair" src="crosshair.png">
+
 <script type="module" src="game3d.js"></script>
 
 </body>
 </html>
-
