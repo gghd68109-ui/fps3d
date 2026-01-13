@@ -1,31 +1,23 @@
-const WebSocket = require("ws");
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const wss = new WebSocket.Server({ port: 8080 });
-console.log("FPS Multiplayer Server started on port 8080");
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-let players = {};
+// ES module path fix
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-wss.on("connection", ws => {
-    const id = Math.random().toString(36).substr(2,9);
-    players[id] = {x:0,y:1,z:0,rot:0};
+// Static dosyalar (index.html, main.js, three.js vs)
+app.use(express.static(__dirname));
 
-    ws.send(JSON.stringify({type:"init", id}));
-
-    ws.on("message", msg=>{
-        const data = JSON.parse(msg);
-        if(data.type==="update"){
-            players[id] = data.state;
-        }
-    });
-
-    ws.on("close", ()=>{
-        delete players[id];
-    });
+// Ana sayfa
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-setInterval(()=>{
-    const packet = JSON.stringify({type:"players", players});
-    wss.clients.forEach(c=>{
-        if(c.readyState===1) c.send(packet);
-    });
-}, 50);
+// Server başlat
+app.listen(PORT, () => {
+  console.log("FPS3D server running on port " + PORT);
+});
