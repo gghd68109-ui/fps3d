@@ -1,23 +1,41 @@
 import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
+import http from "http";
+import { Server } from "socket.io";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = new Server(server);
 
-// ES module path fix
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.use(express.static("public"));
 
-// Static dosyalar (index.html, main.js, three.js vs)
-app.use(express.static(__dirname));
+let players = {};
 
-// Ana sayfa
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+io.on("connection", socket => {
+    console.log("Player joined:", socket.id);
+
+    players[socket.id] = {
+        x: 0,
+        y: 1.6,
+        z: 0
+    };
+
+    socket.emit("currentPlayers", players);
+    socket.broadcast.emit("newPlayer", { id: socket.id, player: players[socket.id] });
+
+    socket.on("move", data => {
+        if (players[socket.id]) {
+            players[socket.id] = data;
+            socket.broadcast.emit("playerMoved", { id: socket.id, player: data });
+        }
+    });
+
+    socket.on("disconnect", () => {
+        delete players[socket.id];
+        io.emit("playerDisconnected", socket.id);
+    });
 });
 
-// Server başlat
-app.listen(PORT, () => {
-  console.log("FPS3D server running on port " + PORT);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log("Server running on port", PORT);
 });

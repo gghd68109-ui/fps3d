@@ -1,184 +1,90 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js";
 
-/* ========= MULTIPLAYER ========= */
-const socket = new WebSocket("wss://YOUR_SERVER_IP:8080");
-let myId = null;
-let netPlayers = {};
+const socket = io();
 
-/* ========= SCENE ========= */
-let scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x202020);
 
-let camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-let renderer = new THREE.WebGLRenderer({antialias:true});
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+camera.position.y = 1.6;
+
+const renderer = new THREE.WebGLRenderer();
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-window.addEventListener("resize", ()=>{
-    camera.aspect = innerWidth/innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-});
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5,10,5);
+scene.add(light);
 
-scene.add(new THREE.AmbientLight(0xffffff,0.6));
-let sun = new THREE.DirectionalLight(0xffffff,0.6);
-sun.position.set(10,20,10);
-scene.add(sun);
-
-/* ========= MAP ========= */
-let floor = new THREE.Mesh(
-    new THREE.BoxGeometry(100,1,100),
-    new THREE.MeshStandardMaterial({color:0x222222})
+const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(100,100),
+    new THREE.MeshStandardMaterial({color: 0x444444})
 );
-floor.position.y=-0.5;
+floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-let walls=[];
-for(let i=0;i<40;i++){
-    let w = new THREE.Mesh(
-        new THREE.BoxGeometry(2,3,2),
-        new THREE.MeshStandardMaterial({color:0xffffff})
-    );
-    w.position.set(Math.random()*40-20,1.5,Math.random()*40-20);
-    scene.add(w);
-    walls.push(w);
+const players = {};
+let myId = null;
+
+function createPlayer(color) {
+    const geo = new THREE.BoxGeometry(1,2,1);
+    const mat = new THREE.MeshStandardMaterial({ color });
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+    return mesh;
 }
 
-/* ========= PLAYER ========= */
-const player = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.5,1.0,4,8),
-    new THREE.MeshStandardMaterial({visible:false})
-);
-player.position.set(0,1,0);
-scene.add(player);
-
-player.add(camera);
-camera.position.set(0,0.8,0);
-
-/* ========= CONTROLS ========= */
-let yaw=0, pitch=0;
-const keys={};
-
-document.body.onclick=()=>document.body.requestPointerLock();
-document.addEventListener("mousemove",e=>{
-    if(document.pointerLockElement){
-        yaw-=e.movementX*0.002;
-        pitch-=e.movementY*0.002;
-        pitch=Math.max(-1.5,Math.min(1.5,pitch));
-        player.rotation.y=yaw;
-        camera.rotation.x=pitch;
-    }
-});
-document.addEventListener("keydown",e=>keys[e.code]=true);
-document.addEventListener("keyup",e=>keys[e.code]=false);
-
-/* ========= PHYSICS ========= */
-let velocityY=0,onGround=false;
-const speed=0.12, gravity=-0.01;
-
-function movePlayer(){
-    let d=new THREE.Vector3();
-    if(keys["KeyW"]) d.z-=1;
-    if(keys["KeyS"]) d.z+=1;
-    if(keys["KeyA"]) d.x-=1;
-    if(keys["KeyD"]) d.x+=1;
-    d.normalize();
-    d.applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
-    player.position.add(d.multiplyScalar(speed));
-}
-
-document.addEventListener("keydown",e=>{
-    if(e.code==="Space" && onGround){
-        velocityY=0.2;
-        onGround=false;
+socket.on("currentPlayers", data => {
+    for (let id in data) {
+        if (id === socket.id) {
+            myId = id;
+            players[id] = createPlayer(0x00ff00);
+        } else {
+            players[id] = createPlayer(0xff0000);
+        }
+        players[id].position.set(data[id].x, data[id].y, data[id].z);
     }
 });
 
-function physics(){
-    velocityY+=gravity;
-    player.position.y+=velocityY;
-    if(player.position.y<1){
-        player.position.y=1;
-        velocityY=0;
-        onGround=true;
+socket.on("newPlayer", data => {
+    players[data.id] = createPlayer(0xff0000);
+});
+
+socket.on("playerMoved", data => {
+    if (players[data.id]) {
+        players[data.id].position.set(data.player.x, data.player.y, data.player.z);
     }
+});
+
+socket.on("playerDisconnected", id => {
+    if (players[id]) {
+        scene.remove(players[id]);
+        delete players[id];
+    }
+});
+
+const keys = {};
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    if (players[myId]) {
+        let p = players[myId].position;
+
+        if (keys["w"]) p.z -= 0.1;
+        if (keys["s"]) p.z += 0.1;
+        if (keys["a"]) p.x -= 0.1;
+        if (keys["d"]) p.x += 0.1;
+
+        camera.position.set(p.x, p.y + 1, p.z + 3);
+        camera.lookAt(p);
+
+        socket.emit("move", { x: p.x, y: p.y, z: p.z });
+    }
+
+    renderer.render(scene, camera);
 }
-
-function wallCollision(){
-    for(let w of walls){
-        let d=player.position.distanceTo(w.position);
-        if(d<1.5){
-            let p=player.position.clone().sub(w.position).normalize();
-            player.position.add(p.multiplyScalar(0.1));
-        }
-    }
-}
-
-/* ========= GUN ========= */
-const raycaster = new THREE.Raycaster();
-const bulletMark = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.2,0.2),
-    new THREE.MeshBasicMaterial({color:0xff0000})
-);
-document.addEventListener("mousedown",()=>shoot());
-
-function shoot(){
-    raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
-    let hits = raycaster.intersectObjects(walls);
-    if(hits.length){
-        let h=hits[0];
-        let m=bulletMark.clone();
-        m.position.copy(h.point);
-        m.lookAt(h.point.clone().add(h.face.normal));
-        scene.add(m);
-    }
-}
-
-/* ========= NETWORK ========= */
-socket.onmessage = e=>{
-    let data = JSON.parse(e.data);
-
-    if(data.type==="init") myId=data.id;
-
-    if(data.type==="players"){
-        for(let id in data.players){
-            if(id===myId) continue;
-
-            if(!netPlayers[id]){
-                let m=new THREE.Mesh(
-                    new THREE.BoxGeometry(1,2,1),
-                    new THREE.MeshStandardMaterial({color:0xff0000})
-                );
-                scene.add(m);
-                netPlayers[id]=m;
-            }
-
-            let p=data.players[id];
-            netPlayers[id].position.set(p.x,p.y,p.z);
-        }
-    }
-};
-
-/* ========= LOOP ========= */
-function loop(){
-    requestAnimationFrame(loop);
-    movePlayer();
-    physics();
-    wallCollision();
-
-    if(myId){
-        socket.send(JSON.stringify({
-            type:"update",
-            state:{
-                x:player.position.x,
-                y:player.position.y,
-                z:player.position.z,
-                rot:yaw
-            }
-        }));
-    }
-
-    renderer.render(scene,camera);
-}
-loop();
+animate();
 
