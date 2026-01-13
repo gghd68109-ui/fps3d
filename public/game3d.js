@@ -3,7 +3,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.m
 const socket = io();
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x202020);
+scene.background = new THREE.Color(0x111111);
 
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
 camera.position.y = 1.6;
@@ -17,74 +17,62 @@ light.position.set(5,10,5);
 scene.add(light);
 
 const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(100,100),
-    new THREE.MeshStandardMaterial({color: 0x444444})
+  new THREE.PlaneGeometry(100,100),
+  new THREE.MeshStandardMaterial({color:0x444444})
 );
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
 const players = {};
-let myId = null;
 
-function createPlayer(color) {
-    const geo = new THREE.BoxGeometry(1,2,1);
-    const mat = new THREE.MeshStandardMaterial({ color });
-    const mesh = new THREE.Mesh(geo, mat);
-    scene.add(mesh);
-    return mesh;
+function makePlayer(color){
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1,2,1),
+    new THREE.MeshStandardMaterial({color})
+  );
+  scene.add(mesh);
+  return mesh;
 }
 
-socket.on("currentPlayers", data => {
-    for (let id in data) {
-        if (id === socket.id) {
-            myId = id;
-            players[id] = createPlayer(0x00ff00);
-        } else {
-            players[id] = createPlayer(0xff0000);
-        }
-        players[id].position.set(data[id].x, data[id].y, data[id].z);
-    }
+socket.on("players", data => {
+  for(const id in data){
+    players[id] = makePlayer(0xff0000);
+    players[id].position.set(data[id].x, data[id].y, data[id].z);
+  }
 });
 
-socket.on("newPlayer", data => {
-    players[data.id] = createPlayer(0xff0000);
+socket.on("player", msg => {
+  if(!players[msg.id]) players[msg.id] = makePlayer(0x00ff00);
+  players[msg.id].position.set(msg.data.x, msg.data.y, msg.data.z);
 });
 
-socket.on("playerMoved", data => {
-    if (players[data.id]) {
-        players[data.id].position.set(data.player.x, data.player.y, data.player.z);
-    }
-});
-
-socket.on("playerDisconnected", id => {
-    if (players[id]) {
-        scene.remove(players[id]);
-        delete players[id];
-    }
+socket.on("remove", id => {
+  if(players[id]){
+    scene.remove(players[id]);
+    delete players[id];
+  }
 });
 
 const keys = {};
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup", e => keys[e.key] = false);
+onkeydown = e => keys[e.key] = true;
+onkeyup = e => keys[e.key] = false;
 
-function animate() {
-    requestAnimationFrame(animate);
+let my = {x:0,y:1,z:0};
 
-    if (players[myId]) {
-        let p = players[myId].position;
+function animate(){
+  requestAnimationFrame(animate);
 
-        if (keys["w"]) p.z -= 0.1;
-        if (keys["s"]) p.z += 0.1;
-        if (keys["a"]) p.x -= 0.1;
-        if (keys["d"]) p.x += 0.1;
+  if(keys.w) my.z -= 0.1;
+  if(keys.s) my.z += 0.1;
+  if(keys.a) my.x -= 0.1;
+  if(keys.d) my.x += 0.1;
 
-        camera.position.set(p.x, p.y + 1, p.z + 3);
-        camera.lookAt(p);
+  socket.emit("move", my);
 
-        socket.emit("move", { x: p.x, y: p.y, z: p.z });
-    }
+  camera.position.set(my.x, my.y+2, my.z+5);
+  camera.lookAt(my.x, my.y, my.z);
 
-    renderer.render(scene, camera);
+  renderer.render(scene, camera);
 }
 animate();
 
