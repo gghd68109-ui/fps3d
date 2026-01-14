@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/loaders/GLTFLoader.js";
 
 /* ========= MULTIPLAYER ========= */
 const socket = new WebSocket("wss://YOUR_SERVER_IP:8080");
@@ -44,16 +45,22 @@ for(let i=0;i<40;i++){
     walls.push(w);
 }
 
-/* ========= PLAYER ========= */
-const player = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.5,1.0,4,8),
-    new THREE.MeshStandardMaterial({visible:false})
-);
+/* ========= PLAYER HITBOX ========= */
+const player = new THREE.Object3D();
 player.position.set(0,1,0);
 scene.add(player);
-
 player.add(camera);
-camera.position.set(0,0.8,0);
+camera.position.set(0,1.6,0);
+
+/* ========= LOAD CHARACTER ========= */
+const loader = new GLTFLoader();
+let myModel = null;
+
+loader.load("/player.glb", gltf=>{
+    myModel = gltf.scene;
+    myModel.scale.set(1,1,1);
+    player.add(myModel);
+});
 
 /* ========= CONTROLS ========= */
 let yaw=0, pitch=0;
@@ -114,27 +121,16 @@ function wallCollision(){
     }
 }
 
-/* ========= GUN ========= */
+/* ========= SHOOT ========= */
 const raycaster = new THREE.Raycaster();
-const bulletMark = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.2,0.2),
-    new THREE.MeshBasicMaterial({color:0xff0000})
-);
 document.addEventListener("mousedown",()=>shoot());
 
 function shoot(){
     raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
     let hits = raycaster.intersectObjects(walls);
-    if(hits.length){
-        let h=hits[0];
-        let m=bulletMark.clone();
-        m.position.copy(h.point);
-        m.lookAt(h.point.clone().add(h.face.normal));
-        scene.add(m);
-    }
 }
 
-/* ========= NETWORK ========= */
+/* ========= MULTIPLAYER MODELS ========= */
 socket.onmessage = e=>{
     let data = JSON.parse(e.data);
 
@@ -145,16 +141,19 @@ socket.onmessage = e=>{
             if(id===myId) continue;
 
             if(!netPlayers[id]){
-                let m=new THREE.Mesh(
-                    new THREE.BoxGeometry(1,2,1),
-                    new THREE.MeshStandardMaterial({color:0xff0000})
-                );
-                scene.add(m);
-                netPlayers[id]=m;
+                loader.load("/player.glb", gltf=>{
+                    let m = gltf.scene;
+                    m.scale.set(1,1,1);
+                    scene.add(m);
+                    netPlayers[id]=m;
+                });
             }
 
-            let p=data.players[id];
-            netPlayers[id].position.set(p.x,p.y,p.z);
+            if(netPlayers[id]){
+                let p=data.players[id];
+                netPlayers[id].position.set(p.x,p.y,p.z);
+                netPlayers[id].rotation.y=p.rot;
+            }
         }
     }
 };
