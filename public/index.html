@@ -6,41 +6,39 @@
 
 <style>
 body {
-  margin: 0;
-  overflow: hidden;
-  background: black;
+    margin: 0;
+    overflow: hidden;
+    background: black;
 }
-
 #crosshair {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 40px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 40px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 }
-
 #info {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  color: white;
-  font-family: Arial;
-  z-index: 10;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-family: Arial;
+    z-index: 10;
 }
 </style>
 </head>
 
 <body>
 
-<div id="info">WASD hareket | Mouse bak | Click ateş</div>
+<div id="info">WASD = hareket | Mouse = bak | Click = ateş</div>
 <img id="crosshair" src="crosshair.png">
 
-<!-- ❌ three.min.js SİLİNDİ -->
-<!-- Three.js artık game3d.js içinde ES Module olarak yükleniyor -->
-
-<script type="module" src="game3d.js"></script>
+<!-- SADECE game3d.js YÜKLENİR -->
+<script type="module" src="./game3d.js"></script>
 
 </body>
+</html>
+
 </html>
 

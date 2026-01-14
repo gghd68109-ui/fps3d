@@ -1,11 +1,12 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/loaders/GLTFLoader.js";
 
-/* ====== SERVER ====== */
-const socket = new WebSocket("wss://fps3d.onrender.com"); // Render adresin
+/* ========= MULTIPLAYER ========= */
+const socket = new WebSocket("wss://YOUR_SERVER_IP:8080");
 let myId = null;
+let netPlayers = {};
 
-/* ====== THREE ====== */
+/* ========= SCENE ========= */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
@@ -20,13 +21,13 @@ window.addEventListener("resize", () => {
     renderer.setSize(innerWidth, innerHeight);
 });
 
-/* ====== LIGHT ====== */
+/* ========= LIGHT ========= */
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
 sun.position.set(10, 20, 10);
 scene.add(sun);
 
-/* ====== MAP ====== */
+/* ========= MAP ========= */
 const floor = new THREE.Mesh(
     new THREE.BoxGeometry(100, 1, 100),
     new THREE.MeshStandardMaterial({ color: 0x222222 })
@@ -45,26 +46,24 @@ for (let i = 0; i < 40; i++) {
     walls.push(w);
 }
 
-/* ====== PLAYER ====== */
+/* ========= PLAYER ROOT ========= */
 const player = new THREE.Object3D();
 player.position.set(0, 1, 0);
 scene.add(player);
 player.add(camera);
 camera.position.set(0, 1.6, 0);
 
-/* ====== LOAD MODEL ====== */
+/* ========= LOAD GLB ========= */
 const loader = new GLTFLoader();
 let myModel = null;
-let netPlayers = {};
-let netStates = {};
 
-loader.load("player.glb", gltf => {
+loader.load("./player.glb", gltf => {
     myModel = gltf.scene;
     myModel.scale.set(1, 1, 1);
     player.add(myModel);
 });
 
-/* ====== CONTROLS ====== */
+/* ========= CONTROLS ========= */
 let yaw = 0, pitch = 0;
 const keys = {};
 
@@ -83,9 +82,11 @@ document.addEventListener("mousemove", e => {
 document.addEventListener("keydown", e => keys[e.code] = true);
 document.addEventListener("keyup", e => keys[e.code] = false);
 
-/* ====== PHYSICS ====== */
-let velocityY = 0, onGround = false;
-const speed = 0.12, gravity = -0.01;
+/* ========= PHYSICS ========= */
+let velocityY = 0;
+let onGround = false;
+const speed = 0.12;
+const gravity = -0.01;
 
 function movePlayer() {
     const d = new THREE.Vector3();
@@ -115,8 +116,9 @@ function physics() {
     }
 }
 
+/* ========= COLLISION ========= */
 function wallCollision() {
-    for (let w of walls) {
+    for (const w of walls) {
         const d = player.position.distanceTo(w.position);
         if (d < 1.5) {
             const p = player.position.clone().sub(w.position).normalize();
@@ -125,34 +127,26 @@ function wallCollision() {
     }
 }
 
-/* ====== MULTIPLAYER ====== */
+/* ========= NETWORK ========= */
 socket.onmessage = e => {
     const data = JSON.parse(e.data);
 
     if (data.type === "init") myId = data.id;
 
     if (data.type === "players") {
-        for (let id in data.players) {
+        for (const id in data.players) {
             if (id === myId) continue;
 
-            const p = data.players[id];
-            netStates[id] = p;
-
             if (!netPlayers[id]) {
-                loader.load("player.glb", gltf => {
+                loader.load("./player.glb", gltf => {
                     const m = gltf.scene;
-                    m.scale.set(1, 1, 1);
                     scene.add(m);
                     netPlayers[id] = m;
-
-                    if (netStates[id]) {
-                        m.position.set(netStates[id].x, netStates[id].y, netStates[id].z);
-                        m.rotation.y = netStates[id].rot;
-                    }
                 });
             }
 
             if (netPlayers[id]) {
+                const p = data.players[id];
                 netPlayers[id].position.set(p.x, p.y, p.z);
                 netPlayers[id].rotation.y = p.rot;
             }
@@ -160,7 +154,7 @@ socket.onmessage = e => {
     }
 };
 
-/* ====== LOOP ====== */
+/* ========= LOOP ========= */
 function loop() {
     requestAnimationFrame(loop);
     movePlayer();
@@ -182,4 +176,3 @@ function loop() {
     renderer.render(scene, camera);
 }
 loop();
-
