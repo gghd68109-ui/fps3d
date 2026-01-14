@@ -3,31 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <title>FPS 3D</title>
+
 <style>
-body { margin:0; overflow:hidden; background:black; }
-#crosshair{
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:40px;
-  transform:translate(-50%,-50%);
-  pointer-events:none;
+body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
 }
-#info{
-  position:absolute;
-  top:10px;
-  left:10px;
-  color:white;
-  font-family:Arial;
+
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+#info {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-family: Arial;
+  z-index: 10;
 }
 </style>
 </head>
+
 <body>
 
 <div id="info">WASD hareket | Mouse bak | Click ateş</div>
 <img id="crosshair" src="crosshair.png">
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<!-- ❌ three.min.js SİLİNDİ -->
+<!-- Three.js artık game3d.js içinde ES Module olarak yükleniyor -->
+
 <script type="module" src="game3d.js"></script>
 
 </body>
